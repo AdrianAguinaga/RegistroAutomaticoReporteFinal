@@ -1,71 +1,96 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { ReportData, GeneratedContent } from '../types';
+import { ReportData, GeneratedContent } from "../types";
+import { COMPETENCY_DATA } from './competencyData';
 
-const API_KEY = process.env.API_KEY;
+// Fix: Initialize the Gemini client according to the documentation.
+// The API key is automatically picked up from process.env.API_KEY.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
+export const generateReportContent = async (
+  formData: ReportData,
+  keyIdeas: string
+): Promise<GeneratedContent> => {
+  // Fix: Use a recommended model for text generation tasks.
+  const model = "gemini-2.5-flash";
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const courseCompetency = COMPETENCY_DATA[formData.claveMateria] || 
+    `El alumno desarrollará las habilidades y conocimientos fundamentales correspondientes a la materia de ${formData.nombreMateria}.`;
 
-export async function generateReportContent(formData: ReportData, keyIdeas: string): Promise<GeneratedContent> {
-  const model = 'gemini-2.5-flash';
+  const systemInstruction = `
+    Eres un asistente experto en redacción académica para la Universidad Autónoma de Baja California (UABC).
+    Tu tarea es generar el contenido para un "Informe de Actividades y Cumplimiento de Competencias" para un curso.
+    Debes redactar de manera formal, profesional y concisa, en español.
+    El informe tiene dos secciones principales que debes generar: "Competencia del Curso" y "Informe de actividades realizadas para el cumplimiento de la competencia".
+  `;
   
   const prompt = `
-    Eres un profesor universitario de la Facultad de Contaduría y Administración de la UABC.
-    Tu tarea es redactar un informe académico formal basado en los siguientes datos y ideas clave.
-    El tono debe ser profesional, claro y conciso.
-
-    Datos del curso:
+    Por favor, genera el contenido para el informe del curso con los siguientes datos:
     - Nombre de la Materia: ${formData.nombreMateria}
     - Nombre del Docente: ${formData.nombreDocente}
     - Periodo: ${formData.periodo}
-    
-    Ideas Clave proporcionadas:
+
+    Aquí están las ideas clave y actividades realizadas durante el curso, proporcionadas por el docente:
     ---
     ${keyIdeas}
     ---
 
-    Basado en lo anterior, genera el contenido para las siguientes dos secciones del "Informe de Actividades y Cumplimiento de Competencias":
-    1.  **Competencia del Curso**: Describe la competencia principal del curso de manera formal y académica.
-    2.  **Informe de actividades realizadas para el cumplimiento de la competencia**: Elabora un párrafo o lista detallada que describa las actividades, proyectos y temas cubiertos que ayudaron a los estudiantes a alcanzar dicha competencia. Expande las ideas clave proporcionadas en una narrativa coherente.
-    
-    Devuelve el resultado estrictamente en el formato JSON especificado.
+    Instrucciones para la generación:
+
+    1.  **competenciaDelCurso**:
+        - Usa la siguiente competencia oficial del curso como base. Puedes ajustarla ligeramente para mejorar la redacción si es necesario, pero mantén la esencia del texto.
+        - Competencia base: "${courseCompetency}"
+
+    2.  **informeDeActividades**:
+        - Redacta un párrafo o varios párrafos que describan cómo se cumplió la competencia del curso.
+        - Basa tu redacción EXCLUSIVAMENTE en las "ideas clave y actividades" proporcionadas.
+        - Sintetiza y organiza las ideas clave en un informe narrativo coherente.
+        - Menciona cómo las actividades, proyectos, y temas cubiertos contribuyeron a que los estudiantes alcanzaran la competencia.
+        - La longitud debe ser como máximo de 200 palabras.
+        - No inventes información que no esté en las ideas clave.
+
+    Genera la respuesta estrictamente en el formato JSON especificado.
   `;
 
   try {
+    // Fix: Use generateContent with a JSON response schema as per the new API guidelines.
     const response = await ai.models.generateContent({
       model: model,
       contents: prompt,
       config: {
+        systemInstruction: systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             competenciaDelCurso: {
               type: Type.STRING,
-              description: "El texto formal que describe la competencia principal del curso."
+              description: 'El texto oficial de la competencia del curso.'
             },
             informeDeActividades: {
               type: Type.STRING,
-              description: "El texto detallado que describe las actividades realizadas para cumplir la competencia."
+              description: 'El informe narrativo de las actividades realizadas, basado en las ideas clave proporcionadas.'
             }
           },
-          required: ["competenciaDelCurso", "informeDeActividades"]
+          required: ['competenciaDelCurso', 'informeDeActividades']
         },
         temperature: 0.5,
       }
     });
 
-    const jsonText = response.text.trim();
-    const parsedJson = JSON.parse(jsonText);
+    // Fix: Extract the text response and parse it as JSON.
+    const jsonText = response.text;
+    const generatedContent: GeneratedContent = JSON.parse(jsonText);
     
-    return parsedJson as GeneratedContent;
+    if (!generatedContent.competenciaDelCurso || !generatedContent.informeDeActividades) {
+      throw new Error("La respuesta de la IA no contiene los campos esperados.");
+    }
 
+    return generatedContent;
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    throw new Error("Failed to generate report content from Gemini API.");
+    console.error("Error al generar contenido con Gemini:", error);
+    if (error instanceof Error) {
+        throw new Error(`Error al comunicarse con el servicio de IA: ${error.message}`);
+    }
+    throw new Error("Ocurrió un error inesperado al generar el informe.");
   }
-}
+};

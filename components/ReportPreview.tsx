@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ReportData, GeneratedContent } from '../types';
 import { exportReportAsPdf } from '../services/pdfService';
@@ -33,15 +32,11 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ data, content }) => {
       </div>
 
       <div id="report-content" className="bg-white p-8 md:p-12 border shadow-lg text-black">
-        <header className="flex justify-between items-start mb-8">
-          <img src="https://www.uabc.mx/presencia/escudo/escudo-uabc-2021-color-s-fondo.png" alt="Logo UABC" className="h-24" />
-          <div className="text-center">
+        <header className="text-center mb-8">
             <h2 className="font-bold text-lg">Universidad Autónoma de Baja California</h2>
             <h3 className="text-md">Facultad de Contaduría y Administración</h3>
             <h4 className="text-md">Coordinación de la Licenciatura en Inteligencia de Negocios</h4>
             <p className="font-bold text-lg mt-4">Informe de Actividades y Cumplimiento de Competencias</p>
-          </div>
-          <img src="https://i.ibb.co/tZQ1rDq/logo-fca.png" alt="Logo FCA" className="h-24 object-contain" />
         </header>
 
         <section className="mb-4">
