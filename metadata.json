@@ -1,0 +1,5 @@
+{
+  "name": "Generador de Informes UABC",
+  "description": "Una aplicación para generar informes de actividades académicas usando ideas clave y la API de Gemini, formateado según el estándar de la UABC.",
+  "requestFramePermissions": []
+}
